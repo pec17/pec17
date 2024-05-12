@@ -1,2 +1,91 @@
-system.out.println
-ok
+public class ride {
+	    //RideDTO-----
+	@NotBlank(message = "{ride.pickuplocation.notpresent}")
+	//private String pickupLocation;
+	@NotBlank(message="{ride.droplocation.notpresent}")
+	//private String dropLocation;
+	@NotNull(message= "{ride.datetime.notpresent}")
+	@FutureOrPresent(message="{ride.datetime.invalid}")
+	//private LocalDateTime rideDateTime;
+	public String getPickupLocation() {
+		return pickupLocation;
+	}
+	public void setPickupLocation(String pickupLocation) {
+		this.pickupLocation = pickupLocation;
+	}
+         //CancelbookingDTO----
+	@NotNull(message = "{ride.reasonforcancellation.notpresent}")
+	@Pattern(regexp="(?=.*[a-zA-Z0-9].*)[a-zA-Z0-9.,! ]*" ,message="{ride.reasonforcancellation.invalid}" )
+	//private String reasonForCancellation;
+	 public String getReasonForCancellation() {
+		return reasonForCancellation;
+	}
+	public void setReasonForCancellation(String reasonForCancellation) {
+		this.reasonForCancellation = reasonForCancellation;
+	}
+	//serviceImpl-------
+	public String bookRide(RideDTO rideDTO) throws InfyRideException{
+		FareEntity fe = fareRepository.getByPickupLocationIgnoreCaseAndDropLocationIgnoreCase(rideDTO.getPickupLocation(),rideDTO.getDropLocation);
+		if(fe==null) {
+			throw new InfyRideException(InfyRideConstants.INFYRIDE_PICKUPTODROPLOCATION_NOT_FOUND.toString())
+		}
+		double s= fe.getFare();
+		RideEntity re ;
+		re = RideDTO.prepareRideEntity(rideDTO);
+		re.setStatus("BOOKED");
+		re.setTotalFare(fe.getFare());
+		rideRepository.save(re);
+		return environment.getProperty(InfyRideConstants.INFYRIDE_BOOKING_SUCCESS.toString())+s;
+	}
+	   //ExceptionControllerAdvice--
+	   @RestControllerAdvice
+	   //public class ExceptionControllerAdvice
+	   @ExceptionHandler(Exception.class)
+	   public ResponseEntity<ErrorInfo> generalExceptionHandler(Exception ex){
+		   logger.error(ex.getMessage(),ex);
+		   ErrorInfo errorInfo = new ErrorInfo();
+		   errorInfo.setErrorCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+		   errorInfo.setErrorMsg(environment.getProperty(InfyRideConstants.INFYRIDE_EXCEPTIONMSG_GENERAL.toString()));
+		   return new ResponseEntity<>(errorInfo,HttpStatus.INTERNAL_SERVER_ERROR);
+	   }
+	   @ExceptionHandler(InfyRideException.class)
+	   public ResponseEntity<ErrorInfo>infyRideExceptionHandler(InfyRideException ex){
+		   logger.error(ex.getMessage(),ex);
+		   ErrorInfo errorInfo = new ErrorInfo();
+		   errorInfo.setErrorCode(HttpStatus.BAD_REQUEST.value());
+		   errorInfo.setErrorMsg(environment.getProperty(ex.getMessage()));
+		   return new ResponseEntity<>(errorInfo,HttpStatus.BAD_REQUEST);
+	   }
+	   @ExceptionHandler({MethodArgumentNotValidException.class,ConstraintViolationException.class)}
+	    public ResponseEntity<ErrorInfo>exceptionHandler(Exception ex){}
+	    //Ride controller----
+	    @RestController
+	    @Validated
+	    public class InfyRideController{
+	    	
+	    	@Autowired
+	    	private InfyRideService infyRideService;
+	    	@PostMapping(value="/ride")
+	    	public String bookRide(@Valid @RequestBody RideDTO rideDTO) throws InfyRideException{
+	    		String msg = infyRideService.bookRide(rideDTO);
+	    		return msg;
+	    	}
+	    	@GetMapping(value="ride/{pickupLocation}/{dropLocation}")
+	    	public String getEstimatedFare(@PathVariable String pickupLocation,@PathVariable String dropLocation)throws InfyRideException{
+	    		String msg = infyRideService.getEstimatedFare(pickupLocation.trim(), dropLocation.trim());
+	    		return msg;
+	    	}
+	    	@PutMapping(value="ride/{rideId}/{newPickupLocation}")
+	    	public String updateRide(@PathVariable @Min(value=1,message="{ride.rideid.invalid}") int rideId , @PathVariable String newPickupLocation )throws InfyRideException{
+	    		String msg = infyRideService.updateRide(rideId,newPickupLocation);
+	    		return msg;
+	    	}
+	    	@DeleteMapping(value = "ride/{rideId}")
+	    	public String cancelRide(@PathVariable @Min(value=1,message="{ride.rideid.invalid}") int rideId , @RequestBody @Valid CancelBookingDTO cancelBookingDTO)throws InfyRideException{
+	    		String msg = infyRideService.cancelRide(rideId,cancelBookingDTO);
+	    		return msg;
+	    	}
+	    }	
+}
+
+
