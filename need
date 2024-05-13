@@ -1,5 +1,8 @@
 public class ride {
 	    //RideDTO-----
+            //application properties
+                server.port=/InfyRide
+		server.sevlet.context-path=/InfyRide	
 	@NotBlank(message = "{ride.pickuplocation.notpresent}")
 	//private String pickupLocation;
 	@NotBlank(message="{ride.droplocation.notpresent}")
