@@ -1,11 +1,102 @@
-public class ride {
+              ITICKET
+	//Application properties
+	server.port=2222
+	server.servlet.context-path=/ITicket	
+			//TicketDTO
+	@NotNull(message = "{ticket.phonenumber.notpresent}")
+	@Pattern(regexp = "[1-9]\\d{9}", message = "ticket.phonenumber.invalid}")
+	private String phoneNumber;
+	
+	@NotEmpty(message = "{ticket.emailid.notpresent}")
+	@Email(message = "{ticket.emailid.invalid}")
+	private String emailId;
+	
+	@NotNull(message = "{ticket.issue.notpresent}")
+	@Pattern(regexp = "[a-zA-Z]+([ ]?[a-ZA-Z]+)*" , message="{ticket.issue.invalid}")
+	private String issue;
+	
+	@NotNull(message="{ticket.raisedby.notpresent}")
+	@Min(value=100, message = "{ticket.raisedby.invalid}")
+	@Max(value=999, message = "{ticket.raisedby.invalid}")
+	private Integer raisedBy;
+	
+	@NotNull(message="{ticket.category.notpresent}")
+	@Pattern(regexp="(ccd|cag|facility)", message = "{ticket.category.invalid}")
+	private String category;
+	
+	@Min(value=1000, message="{ticket.ticketnumber.invalid}")
+	@Max(value =9999, message="{ticket.ticketnumber.invalid}")
+	public Integer getTicketNumber() {
+		return ticketNumber;
+	}
+	//ExceptionControllerAdvice
+	@RestControllerAdvice
+	  public class ExceptionControllerAdvice
+	  
+	  @ExceptionHandler(Exception.class)
+	public ResponseEntity<ErrorInfo> generalExceptionHandler(Exception exception){
+		ErrorInfo errorInfo = new ErrorInfo();
+		errorInfo.setErrorCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+		errorInfo.setErrorMsg(environment.getProperty(TicketConstants.GENERAL_EXCEPTION_MESSAGE.toString()));
+		return new ResponseEntity<>(errorInfo,HttpStatus.INTERNAL_SERVER_ERROR);
+	}
+	@ExceptionHandler(TicketException.class)
+	public ResponseEntity<ErrorInfo> ticketExceptionHandler(TicketException e){
+		ErrorInfo errorInfo = new ErrorInfo();
+		errorInfo.setErrorCode(HttpStatus.BAD_REQUEST.value());
+		errorInfo.setErrorMsg(e.getMessage());
+		return new ResponseEntity<>(errorInfo,HttpStatus.BAD_REQUEST);
+	}
+	@ExceptionHandler({MethodArgumentNotValidException.class,ConstraintViolationException.class})
+    public ResponseEntity<ErrorInfo>exceptionHandler(Exception ex){}
+	
+	    //TicketServiceImpl
+	public long getMaxEmails(String firstChar) throws TicketException{
+		List<String> emailIds = ticketRepository.findAllEmailIds();
+		return emailIds.stream().filter(email -> email.startsWith(firstChar)).count();
+	}
+	//TicketController
+	@RestController
+	@Validated
+	public class TicketController{
+		@Autowired
+		TicketServiceImpl ticketService;
+		
+		@PostMapping(value="/ticket")
+		public ResponseEntity<TicketDTO> raiseTicket(@Valid @RequestBody TicketDTO ticketDTO) throws TicketException{
+			TicketDTO ticketDTO2 = ticketService.raiseTicket(ticketDTO);
+			return new ResponseEntity<>(ticketDTO2,HttpStatus.CREATED);
+		}
+	    @GetMapping(value="/ticket/{ticketNumber}")
+	    public ResponseEntity<TicketDTO> searchTicket(@PathVariable
+	    		                                      @Min(value=1000, message="{ticket.ticketnumber.invalid}")
+	                                                  @Max(value =9999, message="{ticket.ticketnumber.invalid}") 
+	                                                      Integer ticketNumber) throws TicketException{
+	    	TicketDTO ticketDTO2 = ticketService.searchTicket(ticketNumber);
+	    	return new ResponseEntity<>(ticketDTO2,HttpStatus.OK);	    
+	    	}
+	    @GetMapping(value="/emailids/{firstChar}")
+	    public ResponseEntity<Long>getMaxRepeatedEmails(@PathVariable String firstChar){
+	    	long count = ticketService.getMaxEmails(firstChar);
+	    	return new ResponseEntity.OK(count);
+	    }
+	       @GetMapping(value="/ticket")
+	    public ResponseEntity<List<TicketDTO>> getReport(@RequestParam("emailId")
+	                                                                     @NotEmpty(message = "{ticket.emailid.notpresent}")
+	                                                                       @Email(message = "{ticket.emailid.invalid}")
+	                                                                         String emailId) throws TicketException{
+	    	List<TicketDTO> ticketDTOs = ticketService.getReport(emailId);
+	    	return new  ResponseEntity<List<TicketDTO>>(ticketDTOs, HttpStatus.OK); 
+	    }
+//======================================================================================================	
+	INFYRIDE
+  //application properties
+	    server.port=/InfyRide
+		server.servlet.context-path=/InfyRide	
 	    //RideDTO-----
-            //application properties
-                server.port=/InfyRide
-		server.sevlet.context-path=/InfyRide	
-	@NotBlank(message = "{ride.pickuplocation.notpresent}")
+	@NotBlank(message = "{ride.pickuplocation.notpresent}")  || @Pattern(regexp= ".*\\S.*" ,message = "{ride.pickuplocation.notpresent}")
 	//private String pickupLocation;
-	@NotBlank(message="{ride.droplocation.notpresent}")
+	@NotBlank(message="{ride.droplocation.notpresent}") || @Pattern(regexp= ".*\\S.*" ,message = "{ride.pickuplocation.notpresent}")
 	//private String dropLocation;
 	@NotNull(message= "{ride.datetime.notpresent}")
 	@FutureOrPresent(message="{ride.datetime.invalid}")
@@ -59,7 +150,7 @@ public class ride {
 		   errorInfo.setErrorMsg(environment.getProperty(ex.getMessage()));
 		   return new ResponseEntity<>(errorInfo,HttpStatus.BAD_REQUEST);
 	   }
-	   @ExceptionHandler({MethodArgumentNotValidException.class,ConstraintViolationException.class)}
+	   @ExceptionHandler({MethodArgumentNotValidException.class,ConstraintViolationException.class})
 	    public ResponseEntity<ErrorInfo>exceptionHandler(Exception ex){}
 	    //Ride controller----
 	    @RestController
@@ -88,7 +179,6 @@ public class ride {
 	    		String msg = infyRideService.cancelRide(rideId,cancelBookingDTO);
 	    		return msg;
 	    	}
-	    }	
-}
+	    }
+//====================================================================================================	    
 
-//-----------------------------------------------------------------------------------------------------
