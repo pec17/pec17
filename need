@@ -180,5 +180,205 @@
 	    		return msg;
 	    	}
 	    }
-//====================================================================================================	    
+//====================================================================================================
+INFYBANK
+
+
+	//Application properties
+	        server.port=2222
+			server.servlet.context-path=/InfyBankBranchService
+		//BranchDTO
+			@NotNull(message="{branch.openingtime.invalid}")
+	        private LocalTime openingTime;
+	        @NotNull(message="{branch.closingtime.invalid}")
+	        private LocalTime closingTime;
+	        @NotBlank(message="{branch.type.notpresent}")
+	        @Pattern(regexp = "(Retail|Commercial|Overseas)",message = "{branch.type.invalid}")
+	        private String branchType;
+	        @NotBlank(message = "{branch.address.invalid}")
+	        private String address;
+	        @Min(value = 100000,message = "{branch.pincode.invalid}")
+	        @Max(value = 999999,message = "{branch.pincode.invalid}")
+	        private long pinCode;
+	        @Min(value = 1000000000l,message = "{branch.phonenumber.invalid}")
+	        @Max(value = 9999999999l,message = "{branch.phonenumber.invalid}")
+	        private long phoneNumber;
+	      //BranchUpdateDTO
+	        @Min(value = 1000,message = "{branch.code.invalid}")
+	        private int branchcode;
+	        @Pattern(regexp = "(Retail|Commercial|Overseas)",message = "{branch.type.invalid}")
+	        private String branchType;
+	      //serviceIMPL
+	        public BranchDTO addBranch(BranchDTO branchDTO) throws InfyBankBranchException{
+	        	BranchDetailsValidator.validateTimings(branchDTO.getOpeningTime(),branchDTO.getClosingTime());
+	        	List<BranchEntity> branches = branchRepository.findByAddress(branchDTO.getAddress());
+	        	if(!branches.isEmpty()) {
+	        		throw new InfyBankBranchException("BranchServiceImpl.DUPLICATE_BRANCH");
+	        	}
+	        	List<BranchEntity>branchByPhones = branchRepository.findByPhoneNumber(branchDTO.getPhoneNumber());
+	        	if(!branchByPhones.isEmpty()) {
+	        		throw new InfyBankBranchException("BranchServiceImpl.PHONENUMBER_ALREADY_EXISTS");
+	        	}
+	        	BranchEntity be = BranchDTO.dtoToEntityConverter(branchDTO);
+	        	be.setBranchCode(branchRepository.getMaxBranchCode()+1);
+	        	be.setIfscCode("INFY000"+ be.getBranchCode());
+	        	be.setEmailId("infybank."+be.getBranchCode()+"@infybank.co.in");
+	        	be.setStatus("ACTIVE");
+	        	
+	        	branchRepository.save(be);
+	        	branchDTO.setBranchCode(be.getBranchCode());
+	        	branchDTO.setIfscCode(be.getIfscCode());
+	        	branchDTO.setEmailId(be.getEmailId());
+	        	branchDTO.setStatus(be.getStatus());
+	        	return branchDTO;
+	        }
+	      //ExceptionHandler
+	        @RestControllerAdvice
+	        public class GlobalExceptionHandler
+	        @ExceptionHandler(Exception.class)
+	    	public ResponseEntity<ErrorInfo> generalExceptionHandler(Exception exception){
+	        	logger.error(ex.getMessage(),ex);
+	    		ErrorInfo errorInfo = new ErrorInfo();
+	    		errorInfo.setErrorCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+	    		errorInfo.setErrorMsg(environment.getProperty("GENERAL_EXCEPTION_MSG"));
+	    		return new ResponseEntity<>(errorInfo,HttpStatus.INTERNAL_SERVER_ERROR);
+	    	}
+	        @ExceptionHandler(InfyBankBranchException.class)
+	    	public ResponseEntity<ErrorInfo> ticketExceptionHandler(InfyBankBranchException ex){
+	        	logger.error(ex.getMessage(),ex);
+	    		ErrorInfo errorInfo = new ErrorInfo();
+	    		errorInfo.setErrorCode(HttpStatus.BAD_REQUEST.value());
+	    		errorInfo.setErrorMsg(environment.getProperty(ex.getMessage()));
+	    		return new ResponseEntity<>(errorInfo,HttpStatus.BAD_REQUEST);
+	    	}
+	        @ExceptionHandler({MethodArgumentNotValidException.class,ConstraintViolationException.class})
+	        public ResponseEntity<ErrorInfo>exceptionHandler(Exception ex){}
+	        
+	      //BranchApi
+	        @RestController
+	    	@Validated
+	    	public class BranchAPI{
+	        	@Autowired
+	        	private BranchService branchService;
+	        	
+	        	@PostMapping(value = "branch")
+	        	public BranchDTO addBranch(@Valid @RequestBody BranchDTO branchDTO) throws InfyBankBranchException{
+	        		BranchDTO branchDTO2 = branchService.addBranch(branchDTO);
+	        		return branchDTO2;
+	        	}
+	        	@GetMapping(value = "branch/{pinCode}")
+	        	public List<BranchDTO> locateBranches(@PathVariable
+	        			@Min(value = 100000,message = "{branch.pincode.invalid}")
+		                @Max(value = 999999,message = "{branch.pincode.invalid}")
+	        	         long pinCode) throws InfyBankBranchException{
+	        		List<BranchDTO> branches = branchService.locateBranches(pinCode);
+	        		return branches;
+	        	}
+	        	@PutMapping(value = "branch")
+	        	public BranchDTO updateBranch(@Valid @RequestBody BranchUpdateDTO branchUpdateDTO) throws InfyBankBranchException{
+	        		BranchDTO branchDTO = branchService.updateBranch(branchUpdateDTO);
+	        		return branchDTO;
+	        	}
+	        	@DeleteMapping(value = "branch/{branchCode}")
+	        	public String deleteBranch(@PathVariable 
+	        			@Min(value = 1000,message = "{branch.code.invalid}")
+	        	            int branchCode) throws InfyBankBranchException{
+	        		String msg = branchService.deleteBranch(branchCode);
+	        		return msg;
+	        	}
+	        }      
+	        
+//=======================================================================================================
+INFYPANDA
+  //Applictaion properties
+	server.port=2222
+	server.servlet.context-path=/InfyPanda
+	
+			//InfyPandaServiceImpl
+	public List<RestaurantDTO> searchRestaurantsWithItemName(String itemName) throws InfyPandaException{
+		Item item = itemRepository.findByItemNameIgnoreCase(itemName);
+		if(item==null)
+			throw new InfyPandaException(InfyPandaConstrants.INFYPANDA_ITEM_NAME_INVALID.toString());
+		List<RestaurantDTO> restraurantList = new ArrayList<>();
+		List<Restaurant> restraurants = item.getRestaurants();
+		for(Restaurant restraurant: restraurants) {
+			restraurantList.add(RestaurantDTO.valueOf(restraurant));
+		}
+		return restraurantList;
+	}
+	          //OrderDTO
+	@NotBlank(message = "{order.itemname.invalid}")
+	private String itemName;
+	@NotBlank(message= "{order.restaurantname.invalid}")
+	private String restaurantName;
+	@Min(value=1,message="{order.quantity.invalid}")
+	private int quantity;
+	
+	public String getItemName() {
+		return itemName;
+	}
+	public void setItemName(String ItemName) {
+		this.itemName = ItemName;
+	}
+	//ExceptionControllerAdvice
+	@RestControllerAdvice
+	  public class ExceptionControllerAdvice
+	  @Autowired
+	  private Environment environment;
+	@ExceptionHandler(Exception.class)
+	public ResponseEntity<ErrorInfo>generalExceptionHandler(Exception ex){
+		logger.error(ex.getMessage(),ex);
+		ErrorInfo errorInfo=new ErrorInfo();
+		errorInfo.setErrorCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+		errorInfo.setErrorMsg(environment.getProperty(InfyPandaConstants.INFYPANDA_EXCEPTIONMSG_GENERAL.toString))
+		return new ResponseEntity<>(errorInfo,HttpStatus.INTERNAL_SERVER_ERROR);
+	}
+	@ExceptionHandler(InfyPandaException.class)
+	public ResponseEntity<ErrorInfo>InfyPandaExceptionHandler(InfyPandaException ex){
+		logger.error(ex.getMessage(),ex);
+		ErrorInfo errorInfo=new ErrorInfo();
+		errorInfo.setErrorCode(HttpStatus.BAD_REQUEST.value());
+		errorInfo.setErrorMsg(environment.getProperty(ex.getMessage()));
+		return new ResponseEntity<>(errorInfo,HttpStatus.BAD_REQUEST);
+	}
+	@ExceptionHandler({MethodArgumentNotValidException.class,ConstraintViolationException.class})
+    public ResponseEntity<ErrorInfo>exceptionHandler(Exception ex){}
+	
+	//InfyPandaController
+	@RestController
+	@Validated
+	public class InfyPandaController{
+		@Autowired
+		private InfyPandaService infyPandaService;
+		
+		@GetMapping(value="restaurant/{itemName}")
+		public List<RestaurantDTO> searchRestaurantsWithItemName(@PathVariable String itemName)throws InfyPandaException{
+			List<RestaurantDTO> restaurants = infyPandaService.searchRestaurantsWithItemName(itemName.trim());
+			return restaurants;
+		}
+		@GetMapping(value="items/{restaurantName}")
+		public List<ItemDTO> searchItemsByRestaurantName(@PathVariable String restaurantName)throws InfyPandaException{
+			List<ItemDTO> item = infyPandaService.searchItemsByRestaurantName(restaurantName.trim());
+			return item;
+		}
+		@PostMapping(value="/order")
+		public String placeOrder(@Valid @RequestBody OrderDTO orderDTO)throws InfyPandaException{
+			String successMessage=infyPandaService.placeOrder(orderDTO);
+			return successMessage;
+		}
+		@PutMapping(value= "order/{orderId}/{quantityNew}")
+		public String updateOrder(@PathVariable @Min(value=1,message = "{order.orderid.invalid}")Integer orderId, 
+				                  @PathVariable @Min(value=1,message = "{order.quantity.invalid}")Integer quantityNew)throws InfyPandaException{
+			String successMessage=infyPandaService.updateOrder(orderId,quantityNew);
+			return successMessage;
+		}
+		@DeleteMapping(value = "order/{orderId}")
+		public String cancelOrder(@PathVariable @Min(value=1,message="{order.orderid.invalid}")Interger orderId)throws InfyPandaException{
+			String successMessage=infyPandaService.cancelOrder(orderId);
+			return successMessage;
+		}
+	
+	
+		
+//=======================================================================================================================	
 
