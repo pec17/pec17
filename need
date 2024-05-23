@@ -183,7 +183,6 @@
 //====================================================================================================
 INFYBANK
 
-
 	//Application properties
 	        server.port=2222
 			server.servlet.context-path=/InfyBankBranchService
@@ -289,6 +288,94 @@ INFYBANK
 	        }      
 	        
 //=======================================================================================================
+TRIVAINFY
+//Application.properties
+	       server.port=8080
+			server.servlet.context-path=/Trivalnfy
+		//BookingDTO
+			@NotBlank(message="{booking.hotelname.invalid}")
+	       private String hotelName;
+	       @NotBlank(message="{booking.vendorname.invalid}")
+	       private String vendorName;
+	       @Min(value=1,message="{booking.noofrooms.invalid}")
+	       private int noOfRooms;
+	       //TrivaninfyServiceImpl
+	       public List<HotelDTO> searchHotels(String hotelNameSearchKey) throws TrivaInfyException{
+	    	   List<Hotel>listHotels = hotelRepository.findByHotelNameContainingIgnoreCase(hotelNameSearchKey);
+	    	   if(listHotels.isEmpty()) {
+	    		   throw new TrivaInfyException(TrivaInfyConstants.TRIVAINFY_SEARCH_HOTEL_INVALID.toString());
+	    	   }
+	    	   List<HotelDTO>hoteldtoList = new ArrayList<>();
+	    	   for(Hotel hotel : listHotels) {
+	    		   if(hotel.getHotelStatus().equals("A")) {
+	    			   hoteldtoList.add(HotelDTO.entityToDTOConvertor(hotel));
+	    		   }
+	    	   }
+	    	   if(hoteldtoList.isEmpty()) {
+	    		   throw new TrivaInfyException(TrivaInfyConstants.TRIVAINFY_SEARCH_HOTEL_INVALID.toString());
+	    	   }else {
+	    		   return hoteldtoList;
+	    	   }
+	       }
+	       //ExceptionControllerAdvice
+	       @RestControllerAdvice
+	 	  public class ExceptionControllerAdvice
+	 	 @ExceptionHandler(Exception.class)
+	    	public ResponseEntity<ErrorInfo>generalExceptionHandler(Exception ex){
+	    		logger.error(ex.getMessage(),ex);
+	    		ErrorInfo errorInfo=new ErrorInfo();
+	    		errorInfo.setErrorCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+	    		errorInfo.setErrorMsg(environment.getProperty(TrivaInfyConstants.TRIVAINFY_EXCEPTIONMSG_GENERAL.toString));
+	    		return new ResponseEntity<>(errorInfo,HttpStatus.INTERNAL_SERVER_ERROR);
+	    	}
+	 	 @ExceptionHandler(TrivaInfyException.class)
+	    	public ResponseEntity<ErrorInfo>trivaInfyExceptionHandler(TrivaInfyException ex){
+	    		logger.error(ex.getMessage(),ex);
+	    		ErrorInfo errorInfo=new ErrorInfo();
+	    		errorInfo.setErrorCode(HttpStatus.BAD_REQUEST.value());
+	    		errorInfo.setErrorMsg(environment.getProperty(ex.getMessage()));
+	    		return new ResponseEntity<>(errorInfo,HttpStatus.BAD_REQUEST);
+	    	}
+	 	@ExceptionHandler({MethodArgumentNotValidException.class,ConstraintViolationException.class})
+        public ResponseEntity<ErrorInfo>exceptionHandler(Exception ex){}
+                   //TrivainfyController
+	 	@RestController
+		@Validated
+	 	public class TrivaInfyController{
+	 		@Autowired
+	 		private TrivaInfyService trivaInfyService;
+	 		@GetMapping(value="/hotels/{hotelNameSearchKey}")
+	 		public List<HotelDTO> searchHotels(@PathVariable String hotelNameSearchKey) throws TrivaInfyException{
+	 			List<HotelDTO> hotelDTOs=trivaInfyService.searchHotels(hotelNameSearchKey.trim());
+	 			return hotelDTOs;
+	 		}
+	 		@GetMapping(value="/vendors/{vendorNameSearchKey}")
+	 		public List<vendorDTO> searchVendors(@PathVariable String vendorNameSearchKey) throws TrivaInfyException{
+	 			List<vendorDTO> vendorDTOs=trivaInfyService.searchVendors(vendorNameSearchKey.trim());
+	 			return vendorDTOs;
+	 		}
+	 		@PostMapping(value="/booking")
+	 		public String bookHotel(@Valid @RequestBody BookingDTO bookingDto) throws TrivaInfyException{
+	 			String message = trivaInfyService.bookHotel(bookingDto);
+	 			return message;
+	 	}
+	 		@PutMapping(value="/booking/{bookingId}/{noOfRoomsNew}")
+	 		public String updateBooking(@PathVariable
+	 				@Min(value=1,message="{booking.bookingid.invalid}") Integer bookingId, @PathVariable
+	 				@Min(value=1,message="{booking.noofrooms.invalid}")Integer noOfRoomsNew) throws TrivaInfyException{
+	 			String message = trivaInfyService.updateBooking(bookingId, noOfRoomsNew);
+	 			return message;
+	 		}
+	 		@DeleteMapping(value="/booking/{bookingId}")
+	 		public String cancelBooking(@PathVariable
+	 				@Min(value=1,message="{booking.bookingid.invalid}") Integer bookingId) throws TrivaInfyException{
+	 			String message=trivaInfyService.cancelBooking(bookingId);
+	 			return message;
+	 		}
+	 	}
+
+	       
+//=====================================================================================================
 INFYPANDA
   //Applictaion properties
 	server.port=2222
