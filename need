@@ -32,7 +32,8 @@
 	//ExceptionControllerAdvice
 	@RestControllerAdvice
 	  public class ExceptionControllerAdvice
-	  
+private final Logger logger = LoggerFactory.getLogger(this.getClass());
+
 	  @ExceptionHandler(Exception.class)
 	public ResponseEntity<ErrorInfo> generalExceptionHandler(Exception exception){
 		ErrorInfo errorInfo = new ErrorInfo();
@@ -134,6 +135,7 @@
 	   //ExceptionControllerAdvice--
 	   @RestControllerAdvice
 	   //public class ExceptionControllerAdvice
+private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	   @ExceptionHandler(Exception.class)
 	   public ResponseEntity<ErrorInfo> generalExceptionHandler(Exception ex){
 		   logger.error(ex.getMessage(),ex);
@@ -234,6 +236,7 @@ INFYBANK
 	      //ExceptionHandler
 	        @RestControllerAdvice
 	        public class GlobalExceptionHandler
+private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	        @ExceptionHandler(Exception.class)
 	    	public ResponseEntity<ErrorInfo> generalExceptionHandler(Exception exception){
 	        	logger.error(ex.getMessage(),ex);
@@ -320,6 +323,7 @@ TRIVAINFY
 	       //ExceptionControllerAdvice
 	       @RestControllerAdvice
 	 	  public class ExceptionControllerAdvice
+private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	 	 @ExceptionHandler(Exception.class)
 	    	public ResponseEntity<ErrorInfo>generalExceptionHandler(Exception ex){
 	    		logger.error(ex.getMessage(),ex);
@@ -410,6 +414,7 @@ INFYPANDA
 	//ExceptionControllerAdvice
 	@RestControllerAdvice
 	  public class ExceptionControllerAdvice
+private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	  @Autowired
 	  private Environment environment;
 	@ExceptionHandler(Exception.class)
@@ -493,6 +498,7 @@ INFYLAPTOP
 	        //ExceptionControllerAdvice
 	        @RestControllerAdvice
 	  	  public class ExceptionControllerAdvice
+private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	  	@ExceptionHandler(Exception.class)
 	    	public ResponseEntity<ErrorInfo>generalExceptionHandler(Exception ex){
 	    		logger.error(ex.getMessage(),ex);
@@ -647,6 +653,7 @@ MORTGAGE
 	       //ExceptionController
 	       @RestControllerAdvice
 	 	  public class ExceptionController
+private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	 	  @Autowired
 	 	  private Environment environment;
 	 	@ExceptionHandler(Exception.class)
