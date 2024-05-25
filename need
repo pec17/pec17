@@ -568,4 +568,161 @@ INFYLAPTOP
 	        	}
 	        }
 //=======================================================================================================================
-
+MORTGAGE
+//Application properties
+	       server.port=2525
+			server.servlet.context-path=/mortgage
+			//CustomerServiceImpl
+			public List<LoanDTO> fetchAllLoansForCustomer(String panNumber) throws MortgageException{
+	    	   Optional<Customer> opCustomer=customerRepo.findById(panNumber);
+	    	   Customer customer=opCustomer.orElseThrow(()->new MortgageException("Service_CustomerNotFound"));
+	    	   List<Loan> loanList=loanRepository.findLoanByCustomerPanNumber(panNumber);
+	    	   if(loanList.isEmpty()) {
+	    		   throw new MortgageException("Service_No_Loan");
+	    	   }
+	    	   List<LoanDTO> loanDtoList = new ArrayList<>();
+	    	   for(Loan loan:loanList) {
+	    		   loanDtoList.add(Loan.prepareDTO(loan));
+	    	   }
+	       return loanDtoList;
+	       }
+	       //LoanApplicationServiceImpl
+	       public Integer applyLoan(LoanDTO loanDTO) throws MortgageException{
+	    	   Optional<Customer> opCustomer=customerRepository.findById(loanDTO.getPanNumber());
+	    	   Customer customer=opCustomer.orElseThrow(()->new MortgageException("Service_CustomerNotFound"));
+	    	   Optional<Property> opProperty=propertyRepository.findById(loanDTO.getProperty().getPropertyNumber());
+	    	   Property property=opProperty.orElseThrow(()->new MortgageException("Service_Property_Used"));
+	    	   Loan loan = LoanDTO.prepareEntity(loanDTO);
+	    	   loan.setEmi(0.0);
+	    	   Loan savedLoan=loanRepository.save(loan);
+	    	   return savedLoan.getLoanId();
+	       }
+	       public Loan loanEvaluation(Integer loanId,Double estimatedValue) throws MortgageException{
+	    	   Optional<Loan> opLoan=loanRepository.findById(loanId);
+	    	   Loan loan=opLoan.orElseThrow(()->new MortgageException("Service_LOAN_DOES_NOT_EXIST"));
+	    	   if(!loan.getStatus().equals(LoanStatus.PENDING)) {
+	    		   throw new MortgageException("Service_LOAN_CANNOT_UPDATE");
+	    	   }
+	    	   if(estimatedValue<loan.getRequiredAmount()) {
+	    		   throw new MortgageException("Service_LOAN_CANNOT_INITIATE");
+	    	   }else {
+	    		   Double principalAmount=loan.getRequiredAmount();
+	    		   double monthlyInterestRate = INTEREST_RATE /12/100;
+	    		   int totalMonths = loan.getLoanTenure();
+	    		   double EMI = Math.round(principalAmount*monthlyInterestRate*Math.pow(1 + monthlyInterestRate, totalMonths));
+	    		   List<Loan> loanList=loanRepository.findLoanByCustomerPanNumber(loan.getCustomer().getPanNumber());
+	    		   if(loanList.size()>1) {
+	    			   Double sum=0.0;
+	    			   for(Loan l:loanList) {
+	    				   sum+=l.getEmi();
+	    			   }
+	    			   if(loan.getCustomer().getMonthlyIncome()-sum>EMI) {
+	    				   loan.setStatus(LoanStatus.APPROVED);
+	    				   loan.setLoanAmount(principalAmount);
+	    				   loan.setEmi(EMI);
+	    			   }
+	    			   else {
+	    				   loan.setStatus(LoanStatus.REJECTED);
+	    			   }
+	    		   }
+	    		   else {
+	    			   if(loan.getCustomer().getMonthlyIncome()>EMI) {
+	    				   loan.setStatus(LoanStatus.APPROVED);
+	    				   loan.setLoanAmount(principalAmount);
+	    				   loan.setEmi(EMI);
+	    			   }
+	    			   else {
+	    				   loan.setStatus(LoanStatus.REJECTED);
+	    			   }
+	    		   }
+	    		   if(loan.getStatus().equals(LoanStatus.REJECTED)) {
+	    			   throw new MortgageException("Service_LOAN_REJECTED");
+	    		   }
+	    		   else {
+	    			   Loan savedLoan=loanRepository.save(loan);
+	    			   return savedLoan;
+	    		   }
+	    	   }   
+	       }
+	       //ExceptionController
+	       @RestControllerAdvice
+	 	  public class ExceptionController
+	 	  @Autowired
+	 	  private Environment environment;
+	 	@ExceptionHandler(Exception.class)
+	 	public ResponseEntity<ErrorInfo>generalExceptionHandler(Exception ex){
+	 		logger.error(ex.getMessage(),ex);
+	 		ErrorInfo errorInfo=new ErrorInfo();
+	 		errorInfo.setErrorCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+	 		errorInfo.setErrorMsg(environment.getProperty(ex.getMessage()));
+	 		return new ResponseEntity<>(errorInfo,HttpStatus.INTERNAL_SERVER_ERROR);
+	 	}
+	 	@ExceptionHandler(MortgageException.class)
+	 	public ResponseEntity<ErrorInfo>MortgageExceptionHandler(MortgageException ex){
+	 		logger.error(ex.getMessage(),ex);
+	 		ErrorInfo errorInfo=new ErrorInfo();
+	 		errorInfo.setErrorCode(HttpStatus.BAD_REQUEST.value());
+	 		errorInfo.setErrorMsg(environment.getProperty(ex.getMessage()));
+	 		return new ResponseEntity<>(errorInfo,HttpStatus.BAD_REQUEST);
+	 	}
+	 	@ExceptionHandler({MethodArgumentNotValidException.class,ConstraintViolationException.class})
+	     public ResponseEntity<ErrorInfo>exceptionHandler(Exception ex){}
+	       //LoanDTO
+	       @NotNull(message="{Customer_pan_null}")
+	       @Pattern(regexp="[A-Z]{5}[0-9]{4}[A-Z]{1}",message="{Customer_pan_invalid}")
+	       private String panNumber;
+	       @NotNull(message="{Loan_property_Null}")
+	       private PropertyDTO property;
+	       //CustomerDTO
+	       @NotNull(message="{Customer_pan_null}")
+	       @Pattern(regexp="[A-Z]{5}[0-9]{4}[A-Z]{1}",message="{Customer_pan_invalid}")
+	       private String panNumber;
+	       @NotNull(message="{Customer_phone_null}")
+	       @Pattern(regexp="(6|7|8|9)[0-9]{9}",message="{Customer_Phone_invalid}")
+	       private String phone;
+	       @Email(message="{Customer_email_invalid}")
+	       private String email;
+	       @NotNull(message="{Customer_salary_null}")
+	       private Double monthlyIncome;
+	       @NotNull(message="{Customer_creditScore_null}")
+	       @Min(value=300,message="{Customer_Credit_invalid}")
+	       @Max(value=900,message="{Customer_Credit_invalid")
+	       private Integer creditScore;
+	       //ManagementController
+	       @RestController
+	       @RequestMapping(value="/loan")
+	       @Validated
+	       public class MortgageManagementController{
+	    	   @Autowired
+	    	   private CustomerService customerService;
+	    	   @Autowired
+	    	   private LoanApplicationService loanApplicationService;
+	    	   
+	    	  @PostMapping(value="/register")
+	    	  public ResponseEntity<String> customerRegistration(@Valid @RequestBody CustomerDTO customerDTO) throws MortgageException{
+	    		  String panNumber=customerService.customerRegistration(customerDTO);
+	    		  return new ResponseEntity<>("Customer has been registered successfully with customer id :"+panNumber,HttpStatus.CREATED);
+	    	  }
+	    	  @GetMapping(value="/{id}")
+	    	  public ResponseEntity<List<LoanDTO>> fetchAllLoansForCustomer(@PathVariable("id") @Valid @RequestBody String panNumber) throws MortgageException{
+	    		  List<LoanDTO> loanDtoList=customerService.fetchAllLoansForCustomer(panNumber);
+	    		  return new ResponseEntity<>(loanDtoList,HttpStatus.OK);
+	    	  }
+	    	  @PostMapping(value="/applyloan")
+	    	  public ResponseEntity<String> applyLoan (@Valid @RequestBody LoanDTO loanDTO) throws MortgageException{
+	    		  Integer loanId=loanApplicationService.applyLoan(loanDTO);
+	    		  return new ResponseEntity<>("you have successfully applied for Mortgage with loan Id:" +loanId,HttpStatus.CREATED);
+	    	  }
+	    	  @PutMapping(value="/{loanId}")
+	    	  public ResponseEntity<String> loanApplicationReview(@PathVariable("loanId") Integer loanId) throws MortgageException{
+	    		  String message = loanApplicationService.loanApplicationReview(loanId);
+	    		  return new ResponseEntity<>(message,HttpStatus.OK);
+	    	  }
+	    	  @PutMapping(value="/evaluation")
+	    	  public ResponseEntity<Loan> loanEvaluation(@RequestParam Integer loanId, @RequestParam Double estimatedValue) throws MortgageException{
+	    		  Loan loan=loanApplicationService.loanEvaluation(loanId, estimatedValue);
+	    		  return new ResponseEntity<>(loan,HttpStatus.OK);
+	    	  }
+	    	   
+	       }
+	       
