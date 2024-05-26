@@ -738,7 +738,68 @@ private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	    	  }
 	    	   
 	       }
-	       
+//==========================================================================================================
+Mortgage Tablescript
+
+
+drop database if exists Mortgage;
+create database Mortgage;
+use Mortgage;
+CREATE TABLE customer (
+pan_number varchar (255) NOT NULL,
+age int DEFAULT NULL,
+credit_score int DEFAULT NULL,
+email varchar (255) DEFAULT NULL,
+gender varchar (255) DEFAULT NULL, 
+monthly_income double DEFAULT NULL,
+name varchar (255) DEFAULT NULL,
+phone varchar (255) DEFAULT NULL, 
+PRIMARY KEY (pan_number)
+) ;
+INSERT INTO mortgage.customer
+
+(pan_number,
+age,
+credit_score,
+email,
+gender,
+monthly_income,
+name,
+phone)
+VALUES
+("ASDFF4567U",
+34,
+700,
+"rahul@gmail.com",
+"Male",
+500000.0, 
+"Rahul",
+"8990876546") ;
+
+CREATE TABLE property (
+property_number int NOT NULL,
+address varchar (255) DEFAULT NULL,
+dateof_purchase date DEFAULT NULL,
+estimated_value double DEFAULT NULL,
+PRIMARY KEY (property_number)
+);
+
+CREATE TABLE loan (
+ loan_id int NOT NULL AUTO_INCREMENT,
+ emi double NOT NULL,
+ loan_amount double DEFAULT NULL,
+ loan_purpose varchar(255) DEFAULT NULL,
+ loan_tenure int NOT NULL,
+required_amount double DEFAULT NULL,
+status enum('APPROVED','REJECTED','PENDING')DEFAULT NULL,
+pan_number Varchar (235) DEFAULT NULL,
+property_number int DEFAULT NULL,
+PRIMARY KEY (loan_id),
+UNIQUE KEY UK_evjrli7o00vftvwmdjm4erqa8 (property_number),
+KEY FKt9dp2muv5bh673w5yqxvoldvt (pan_number),
+CONSTRAINT FK50vk26lvqsyaul2r95lw3isnf FOREIGN KEY (property_number) REFERENCES property (property_number),
+CONSTRAINT FKt9d2muv5bh673w5yqxvoldvt FOREIGN KEY (pan_number) REFERENCES customer (pan_number) 
+);
 //=============================================================================================================
 NEWMORTGAGE
 // Application properties
@@ -911,4 +972,6 @@ NEWMORTGAGE
 		    	  }
 		    	   
 		       }
+//==============================================================================================================
+
 		       
