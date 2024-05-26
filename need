@@ -32,22 +32,24 @@
 	//ExceptionControllerAdvice
 	@RestControllerAdvice
 	  public class ExceptionControllerAdvice
-private final Logger logger = LoggerFactory.getLogger(this.getClass());
-
+		private final Logger logger = LoggerFactory.getLogger(this.getClass());
+	@Autowired
+	private Environment environment;
+	  
 	  @ExceptionHandler(Exception.class)
 	public ResponseEntity<ErrorInfo> generalExceptionHandler(Exception exception){
-                logger.error(ex.getMessage(),ex);
-		ErrorInfo errorInfo = new ErrorInfo();
+		  logger.error(exception.getMessage(),exception);
+		  ErrorInfo errorInfo = new ErrorInfo();
 		errorInfo.setErrorCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 		errorInfo.setErrorMsg(environment.getProperty(TicketConstants.GENERAL_EXCEPTION_MESSAGE.toString()));
 		return new ResponseEntity<>(errorInfo,HttpStatus.INTERNAL_SERVER_ERROR);
 	}
 	@ExceptionHandler(TicketException.class)
-	public ResponseEntity<ErrorInfo> ticketExceptionHandler(TicketException e){
-               logger.error(ex.getMessage(),ex);
+	public ResponseEntity<ErrorInfo> ticketExceptionHandler(TicketException exception){
+		logger.error(exception.getMessage(),exception);
 		ErrorInfo errorInfo = new ErrorInfo();
 		errorInfo.setErrorCode(HttpStatus.BAD_REQUEST.value());
-		errorInfo.setErrorMsg(e.getMessage());
+		errorInfo.setErrorMsg(environment.getProperty(exception.getMessage()));
 		return new ResponseEntity<>(errorInfo,HttpStatus.BAD_REQUEST);
 	}
 	@ExceptionHandler({MethodArgumentNotValidException.class,ConstraintViolationException.class})
@@ -65,7 +67,7 @@ List<Ticket> list = ticketRepository.findAll();
 	@Validated
 	public class TicketController{
 		@Autowired
-		TicketServiceImpl ticketService;
+		private TicketServiceImpl ticketService;
 		
 		@PostMapping(value="/ticket")
 		public ResponseEntity<TicketDTO> raiseTicket(@Valid @RequestBody TicketDTO ticketDTO) throws TicketException{
@@ -96,7 +98,7 @@ List<Ticket> list = ticketRepository.findAll();
 //======================================================================================================	
 	INFYRIDE
   //application properties
-	    server.port=/InfyRide
+	    server.port=8080
 		server.servlet.context-path=/InfyRide	
 	    //RideDTO-----
 	@NotBlank(message = "{ride.pickuplocation.notpresent}")  || @Pattern(regexp= ".*\\S.*" ,message = "{ride.pickuplocation.notpresent}")
@@ -243,7 +245,7 @@ INFYBANK
 private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	        @ExceptionHandler(Exception.class)
 	    	public ResponseEntity<ErrorInfo> generalExceptionHandler(Exception exception){
-	        	logger.error(ex.getMessage(),ex);
+	        	logger.error(exception.getMessage(),exception);
 	    		ErrorInfo errorInfo = new ErrorInfo();
 	    		errorInfo.setErrorCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 	    		errorInfo.setErrorMsg(environment.getProperty("GENERAL_EXCEPTION_MSG"));
