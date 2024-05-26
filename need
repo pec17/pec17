@@ -36,6 +36,7 @@ private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	  @ExceptionHandler(Exception.class)
 	public ResponseEntity<ErrorInfo> generalExceptionHandler(Exception exception){
+                logger.error(ex.getMessage(),ex);
 		ErrorInfo errorInfo = new ErrorInfo();
 		errorInfo.setErrorCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 		errorInfo.setErrorMsg(environment.getProperty(TicketConstants.GENERAL_EXCEPTION_MESSAGE.toString()));
@@ -43,6 +44,7 @@ private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	}
 	@ExceptionHandler(TicketException.class)
 	public ResponseEntity<ErrorInfo> ticketExceptionHandler(TicketException e){
+               logger.error(ex.getMessage(),ex);
 		ErrorInfo errorInfo = new ErrorInfo();
 		errorInfo.setErrorCode(HttpStatus.BAD_REQUEST.value());
 		errorInfo.setErrorMsg(e.getMessage());
