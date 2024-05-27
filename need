@@ -199,7 +199,7 @@ INFYBANK
 	        private LocalTime openingTime;
 	        @NotNull(message="{branch.closingtime.invalid}")
 	        private LocalTime closingTime;
-	        @NotBlank(message="{branch.type.notpresent}")
+	        @NotNull(message="{branch.type.notpresent}")
 	        @Pattern(regexp = "(Retail|Commercial|Overseas)",message = "{branch.type.invalid}")
 	        private String branchType;
 	        @NotBlank(message = "{branch.address.invalid}")
