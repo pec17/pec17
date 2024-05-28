@@ -1,3 +1,121 @@
+DOCTOR
+ //application.properties
+	       server.port = 8080
+			server.servlet.context-path = /Infybookmydoctor
+
+			//SERVICE IMPL
+
+			public PatientDTO registerPatient(PatientDTO patientDTO) throws InfyBookMyDoctorException{
+			//List
+			Optional<DoctorEntity> doc = doctorRepository.findByDoctorNameAndDoctorType(doctorName,doctorType);
+			if(doc.isEmpty())
+				throw new InfyBookMyDoctorException(InfyBookMyDoctorConstants.DOCTOR_NOT_FOUND.toString());
+
+			//  DoctorEntity en =doc.orElseThrow(()-> new InfyBookMyDoctorException(InfyBookMyDoctorConstants.DOCTOR_NOT_FOUND.toString()));
+			//List
+			Optional<PatientEntity> patient = patientRepository.findByPhoneNumber(phoneNumber);
+
+			if(patient.isPresent())
+				throw new InfyBookMyDoctorException(InfyBookMyDoctorConstants.PHONE_NO_NOT_UNIQUE);
+
+			if(!doc.isEmpty && !patient.isPresent()){
+			PatientEntity pat = PatientDTO.preparePatientEntity(patientDTO);
+			pat.set_____(doc);
+			patientRepository.save(pat);
+			}
+			return patientDTO;
+			}
+	       
+			//DTO
+			@NotNull("{patient.name.notpresent}")
+			@Pattern(regexp= "[A-Z][a-z]+" , message = "{patient.name.invalid}")
+			patientName
+
+			@NotNull("{patient.phoneNumber.notpresent}")
+			@Pattern(regexp= "[0-9]{10}" , message = "{patient.phoneNo.invalid}")
+			phoneNumber
+
+			@NotNull("{patient.doctor.notpresent}")
+			@Valid
+			doctorDTO 
+
+			@NotNull("{doctor.doctorType.notpresent}")
+			@Pattern(regexp= "(skin|eye|dental)" , message = "{patient.phoneNo.invalid}")
+			doctorType
+
+			@NotNull("{doctor.doctorType.notpresent}")
+			@Pattern(regexp= "[A-Z][a-z]+" , message = "{doctor.name.invalid}")
+			doctorName
+
+			//Controller Advice
+			
+			@RestControllerAdvice
+			
+			public class---------
+
+			@ExceptionHandler(Exception.class)
+
+			logger.error(ex.getMessage(),ex)
+			ErrorInfo err =new ErrorInfo();
+			err.setErrorCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+			err.setErrorMsg(environment.getProperty(InfyBookMyDoctorConstants.INFYBOOKMYDOCTOR_EXCEPTIONMSG_GENERAL.toString()))
+			return new ResponseEntity<>(err,HttpStatus.INTERNAL_SERVER_ERROR);
+
+
+			@ExceptionHandler(InfyBookMyDoctorException.class)
+
+			logger.error(ex.getMessage(),ex)
+			ErrorInfo err =new ErrorInfo();
+			err.setErrorCode(HttpStatus.BAD_REQUEST.value());
+			err.setErrorMsg(environment.getProperty(ex.getMessage()))
+			return new ResponseEntity<>(err,HttpStatus.BAD_REQUEST);
+
+
+			@ExceptionHandler({MethodArgumentNotValid.class,ConstraintViolationException.class})
+
+                // Controller class			
+			@RestController
+			@RequestMapping
+			@validated
+
+			public class ________{
+
+			@Autowired
+			private BookMyDoctorService bookMyDoctorService;
+
+			@GetMapping(value= "/patients/{patientName}")
+			public ResponseEntity<List<PatientDTO>>getDetailsByPatientName(@PathVariable @Pattern(regexp = "[a-z]+" , message= "{patient.name.invalid}") @Valid String patientName) throws InfyBookMyDoctorException{
+			 
+			List<PatientDTO> pat= bookMyDoctorService.getDetailsByPatientName(patientName);
+			return new ResponseEntity<>(pat , HttpStatus.OK);
+			}
+
+			@PostMapping(value= "/register")
+			public ResponseEntity<PatientDTO>registerPatient(@Valid @RequestBody PatientDTO patientDTO) throws InfyBookMyDoctorException{
+
+			PatientDTO patDTO=bookMyDoctorService.registerPatient(patientDTO);
+			return new ResponseEntity<>(patDTO , HttpStatus.CREATED);
+
+			}
+
+			@PutMapping(value="patients/{appointmentId}")
+			public ResponseEntity<PatientDTO>updatePatient(@PathVariable Integer appointmentId,
+								       @RequestParam("phoneNo") 
+								       @Pattern(regexp= "[0-9]{10}" , message ="{patient.phoneNo.invalid}") Long phoneNo) throws InfyBookMyDoctorException{
+
+			PatientDTO patDTO= bookMyDoctorService.updatePatient(appointmentId,phoneNo);
+			return new ResponseEntity<>(patDTO);
+
+			}
+
+			@DeleteMapping(value="patients/{phoneNo}")
+			public String deletePatient(@PathVariable @Pattern(regexp= "[0-9]{10}" , message = "{patient.phoneNo.invalid}") Long phoneNo) throws InfyBookMyDoctorException{
+
+			String del= bookMyDoctorService.deletePatient(phoneNo);
+			return del;
+
+			}
+//===================================================================
               ITICKET
 	//Application properties
 	server.port=2222
