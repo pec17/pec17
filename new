@@ -231,3 +231,290 @@ return environment.getProperty(InfyRideConstants.INFYRIDE_CANCEL_SUCCESS.toStrin
        
 
 	 //=======================================================================================================
+MORTGAGE
+// Application properties
+
+		server.port=2525 
+	        server.servlet.context-path=/mortgage
+
+		// CustomerServiceImpl
+
+		public List<LoanDTO> fetchAllLoansForCustomer(String panNumber) throws MortgageException {
+			Optional<Customer> opCustomer = customerRepo.findById(panNumber);
+			Customer customer = opCustomer.orElseThrow(() -> new MortgageException("Service_CustomerNotFound"));
+			List<Loan> loanList = loanRepository.findLoanByCustomerPanNumber(panNumber);
+			if (loanList.isEmpty()) {
+				throw new MortgageException("Service_No_Loan");
+			}
+			List<LoanDTO> loanDtoList = new ArrayList<>();
+			for (Loan loan : loanList) {
+				loanDtoList.add(Loan.prepareDTO(loan));
+			}
+			return loanDtoList;
+		}
+
+		// LoanApplicationServiceImpl
+
+		public Integer applyLoan(LoanDTO loanDTO) throws MortgageException {
+			Optional<Customer> opCustomer = customerRepository.findById(loanDTO.getPanNumber());
+			Customer customer = opCustomer.orElseThrow(() -> new MortgageException("Service_CustomerNotFound"));
+			Optional<Property> opProperty = propertyRepository.findById(loanDTO.getProperty().getPropertyNumber());
+			Property property = opProperty.orElseThrow(() -> new MortgageException("Service_Property_Used"));
+			Loan loan = LoanDTO.prepareEntity(loanDTO);
+			loan.setEmi(0.0);
+			Loan savedLoan = loanRepository.save(loan);
+			return savedLoan.getLoanId();
+		}
+
+		public Loan loanEvaluation(Integer loanId, Double estimatedValue) throws MortgageException {
+			Optional<Loan> opLoan = loanRepository.findById(loanId);
+			Loan loan = opLoan.orElseThrow(() -> new MortgageException("Service_LOAN_DOES_NOT_EXIST"));
+			if (!loan.getStatus().equals(LoanStatus.PENDING)) {
+				throw new MortgageException("Service_LOAN_CANNOT_UPDATE");
+			}
+			if (estimatedValue < loan.getRequiredAmount()) {
+				throw new MortgageException("Service_LOAN_CANNOT_INITIATE");
+			} else {
+				Double principalAmount = loan.getRequiredAmount();
+				double monthlyInterestRate = INTEREST_RATE / 12 / 100;
+				int totalMonths = loan.getLoanTenure();
+				double EMI = Math
+						.round((principalAmount * monthlyInterestRate * Math.pow(1 + monthlyInterestRate, totalMonths))/(Math.pow(1+monthlyInterestRate, totalMonths)-1));
+				List<Loan> loanList = loanRepository.findLoanByCustomerPanNumber(loan.getCustomer().getPanNumber());
+				if (loanList.size() > 1) {
+					Double sum = 0.0;
+					for (Loan l : loanList) {
+						sum += l.getEmi();
+					}
+					if (loan.getCustomer().getMonthlyIncome() - sum > EMI) {
+						loan.setStatus(LoanStatus.APPROVED);
+						loan.setLoanAmount(principalAmount);
+						loan.setEmi(EMI);
+					} else {
+						loan.setStatus(LoanStatus.REJECTED);
+					}
+				} else {
+					if (loan.getCustomer().getMonthlyIncome() > EMI) {
+						loan.setStatus(LoanStatus.APPROVED);
+						loan.setLoanAmount(principalAmount);
+						loan.setEmi(EMI);
+					} else {
+						loan.setStatus(LoanStatus.REJECTED);
+					}
+				}
+				if (loan.getStatus().equals(LoanStatus.REJECTED)) {
+					throw new MortgageException("Service_LOAN_REJECTED");
+				} else {
+					Loan savedLoan = loanRepository.save(loan);
+					return savedLoan;
+				}
+			}
+		}
+
+		// ExceptionController
+
+		@RestControllerAdvice
+		 	  public class ExceptionController
+
+		 	 private final Logger logger = LoggerFactory.getLogger(this.getClass());
+
+		 	  @Autowired
+		 	  private Environment environment;
+		 	@ExceptionHandler(Exception.class)
+		 	public ResponseEntity<ErrorInfo>generalExceptionHandler(Exception ex){
+		 		logger.error(ex.getMessage(),ex);
+		 		ErrorInfo errorInfo=new ErrorInfo();
+		 		errorInfo.setErrorCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+		 		errorInfo.setErrorMsg(environment.getProperty(ex.getMessage()));
+		 		return new ResponseEntity<>(errorInfo,HttpStatus.INTERNAL_SERVER_ERROR);
+		 	}
+		 	@ExceptionHandler(MortgageException.class)
+		 	public ResponseEntity<ErrorInfo>MortgageExceptionHandler(MortgageException ex){
+		 		logger.error(ex.getMessage(),ex);
+		 		ErrorInfo errorInfo=new ErrorInfo();
+		 		errorInfo.setErrorCode(HttpStatus.BAD_REQUEST.value());
+		 		errorInfo.setErrorMsg(environment.getProperty(ex.getMessage()));
+		 		return new ResponseEntity<>(errorInfo,HttpStatus.BAD_REQUEST);
+		 	}
+		 	@ExceptionHandler({MethodArgumentNotValidException.class,ConstraintViolationException.class})
+		     public ResponseEntity<ErrorInfo>exceptionHandler(Exception ex){}
+
+		       //LoanDTO
+
+		       @NotNull(message="{Customer_pan_null}")
+		       @Pattern(regexp="[A-Z]{5}[0-9]{4}[A-Z]{1}",message="{Customer_pan_invalid}")
+		       private String panNumber;
+		       @NotNull(message="{Loan_property_Null}")
+		       private PropertyDTO property;
+
+		       //CustomerDTO
+
+		       @NotNull(message="{Customer_pan_null}")
+		       @Pattern(regexp="[A-Z]{5}[0-9]{4}[A-Z]{1}",message="{Customer_pan_invalid}")
+		       private String panNumber;
+		       @NotNull(message="{Customer_phone_null}")
+		       @Pattern(regexp="(6|7|8|9)[0-9]{9}",message="{Customer_Phone_invalid}")
+		       private String phone;
+		       @Email(message="{Customer_email_invalid}")
+		       private String email;
+		       @NotNull(message="{Customer_salary_null}")
+		       private Double monthlyIncome;
+		       @NotNull(message="{Customer_creditScore_null}")
+		       @Min(value=300,message="{Customer_Credit_invalid}")
+		       @Max(value=900,message="{Customer_Credit_invalid")
+		       private Integer creditScore;
+
+		       //ManagementController
+
+		       @RestController
+		       @RequestMapping(value="/loan")
+		       @Validated
+		       public class MortgageManagementController{
+		    	   @Autowired
+		    	   private CustomerService customerService;
+		    	   @Autowired
+		    	   private LoanApplicationService loanApplicationService;
+		    	   
+		    	  @PostMapping(value="/register", consumes = "application/json")
+		    	  public ResponseEntity<String> customerRegistration(@Valid @RequestBody CustomerDTO customerDTO) throws MortgageException{
+		    		  String panNumber=customerService.customerRegistration(customerDTO);
+		    		  return new ResponseEntity<>("Customer has been registered successfully with customer id :"+panNumber,HttpStatus.CREATED);
+		    	  }
+		    	  @GetMapping(value="/{id}")
+		    	  public ResponseEntity<List<LoanDTO>> fetchAllLoansForCustomer(@PathVariable("id") @Pattern(regexp="[A-Z]{5}[0-9]{4}[A-Z]{1}",message="{Customer_pan_invalid}") String panNumber) throws MortgageException{
+		    		  List<LoanDTO> loanDtoList=customerService.fetchAllLoansForCustomer(panNumber);
+		    		  return new ResponseEntity<>(loanDtoList,HttpStatus.OK);
+		    	  }
+		    	  @PostMapping(value="/applyloan")
+		    	  public ResponseEntity<String> applyLoan (@Valid @RequestBody LoanDTO loanDTO) throws MortgageException{
+		    		  Integer loanId=loanApplicationService.applyLoan(loanDTO);
+		    		  return new ResponseEntity<>("you have successfully applied for Mortgage with loan Id:" +loanId,HttpStatus.CREATED);
+		    	  }
+		    	  @PutMapping(value="/{loanId}")
+		    	  public ResponseEntity<String> loanApplicationReview(@PathVariable @Min(value=1,message="{Loan_loanId_invalid}") Integer loanId) throws MortgageException{
+		    		  String message = loanApplicationService.loanApplicationReview(loanId);
+		    		  return new ResponseEntity<>(message,HttpStatus.OK);
+		    	  }
+		    	  @PutMapping(value="/evaluation")
+		    	  public ResponseEntity<Loan> loanEvaluation(@RequestParam @Min(value=1,message="{Loan_loanId_invalid}") Integer loanId, @RequestParam Double estimatedValue) throws MortgageException{
+		    		  Loan loan=loanApplicationService.loanEvaluation(loanId, estimatedValue);
+		    		  return new ResponseEntity<>(loan,HttpStatus.OK);
+		    	  }
+		    	   
+		       }
+		       
+	       
+//====================================================================================================
+VIDEO
+//Application Properties
+	server.port=2222
+			server.servlet.context-path=/InfyVidStream
+			
+			//UserDTO
+					@NotNull(message="{}")
+			@Min(value=100,message="{}")
+			private int userId;
+
+			@NotBlank(message="{}")
+			@Size(min=5, max=15 ,message="{}")
+			private userName;
+
+			@NotBlank(message="{}")
+			@Pattern(regexp="^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?!.*\s).{8,}$",message="{}")
+			@JsonIgnore
+			private String password;
+
+			@NotBlank(message="{}")
+			private String emailId;
+
+			// InfyVidStreamServiceImpl
+			
+			public String registerUser(UserDTO request) throws InfyVidStreamException{
+		
+		Optional<UserEntity> user= userRepository.findByUserName(request.getUserName());
+		
+		if(user.isPresent()) {
+			throw new InfyVidStreamException(InfyVidStreamConstants.INFYVIDSTREAM_USERNAME_EXISTS.toString());
+		}
+		Optional<UserEntity> user2 = userRepository.findByEmail(request.getEmail());
+		
+		if(user2.isPresent()){
+			throw new InfyVidStreamException(InfyVidStreamConstants.INFYVIDSTREAM_EMAILID_EXISTS.toString());
+}
+		
+		UserEntity user3 = new User();
+		user3.setEmail(request.getEmail());
+		user3.setUserId(request.getUserId());
+		user3.setUserName(request.getUserName());
+		UserEntity saved = userRepository.save(user3);
+		
+		String msg = environment.getProperty(InfyVidStreamConstants.INFYVIDSTREAM_USER_REGISTERED.toString())+saved.getUserId();
+		
+		return msg;
+	}
+
+	public String addMovieToFavorities(Long userId,MovieDTO request) throws InfyVidStreamException{
+		
+		Optional<UserEntity> user = userRepository.findByUserId(userId);
+		
+		if(!user.isPresent()) {
+			throw new InfyVidStreamException(InfyVidStreamConstants.INFYVIDSTREAM_USERID_INVALID.toString()+userId);
+		}
+		
+		Optional<MovieEntity> movie = movieRepository.findById(request.getMovieId());
+		
+		if(!movie.isPresent()) {
+			throw new InfyVidStreamException(InfyVidStreamConstants.INFYVIDSTREAM_MOVIEID_NOT_FOUND.toString()+request.getMovieId());
+
+		}
+		user.get().addToFavorites(movie);
+		userRepository.save(user.get());
+		String msg = environment.getProperty(InfyVidStreamConstants.INFYVIDSTREAM_MOVIE_ADDED_FAVORITES.toString());
+		return msg;
+	}
+	
+	public UserDTO getUserProfile(Long userId) throws InfyVidStreamException{
+		
+		Optional<UserEntity> user = userRepository.findById(userId);
+		if(!user.isPresent()) {
+			throw new InfyVidStreamException(InfyVidStreamConstants.INFYVIDSTREAM_USERID_NOTFOUND.toString());
+		}
+		UserDTO userNew = UserDTO.createDTO(user.get());
+		userNew.setMovieFavorites(user.get().getMovieFavorites());
+		UserDTO.setMessage(InfyVidStreamConstants.INFYVIDSTREAM_USER_PROFILE_FETCH_SUCCESS.toString)
+		return UserDTO;
+	}
+	
+	//InfyVidStreamController
+	@RestController
+	@RequestMapping
+	@validated
+public class 
+
+@AutoWired
+private InfyVidStreamService infyVidStreamService;
+	
+	@PostMapping(value="/users/register")
+	public ResponseEntity<String> registerUser(@Requestbody @Valid UserDTO request) throws InfyVidStreamException{
+		String userId=infVidStreamService.registerUser(request);
+			return new ResponseEntity<>(userId,HttpStatus.CREATED);
+	}
+
+	@PutMapping(value="/users/{userId}/favorites")
+	public ResponseEntity<String> addMovieToFavorities(@PathVariable @NotNull(message="{}")
+	@Min(value=100,message="{}") Long userId, @Valid @RequestBody MovieDTO request) throws InfyVidStreamException{
+		String msg=infVidStreamService.addMovieToFavorities(userId,request);
+		return msg;
+	}
+
+	@GetMapping(value="/users/profiles")
+	public ResponseEntity<UserDTO> getUserProfile(@RequestParam("userId")
+	@NotNull(message="{}")
+	@Min(value=100,message="{}")
+	 Long userId) throws InfyVidStreamException{
+		String msg=infVidStreamService.getUserProfile(userId);
+		return msg;
+	}
+	
+//================================================================================================	
+	
