@@ -1,0 +1,233 @@
+//DOCTOR
+//application.properties
+	       server.port = 8080
+			server.servlet.context-path = /Infybookmydoctor
+
+			//SERVICE IMPL
+
+					public PatientDTO registerPatient(PatientDTO patientDTO) throws InfyBookMyDoctorException{
+				Optional<DoctorEntity> doc = doctorRepository.findByDoctorNameAndDoctorType(patientDTO.getDoctorDTO().getDoctorName(),patientDTO.getDoctorDTO().getDoctorName());
+				if(doc.isEmpty())
+					throw new InfyBookMyDoctorException(InfyBookMyDoctorConstants.DOCTOR_NOT_FOUND.toString());
+
+				//  DoctorEntity en =doc.orElseThrow(()-> new InfyBookMyDoctorException(InfyBookMyDoctorConstants.DOCTOR_NOT_FOUND.toString()));
+
+				List<PatientEntity> patient = patientRepository.findByPhoneNumber(phoneNumber);
+
+				if(!patient.isEmpty())
+					throw new InfyBookMyDoctorException(InfyBookMyDoctorConstants.PHONE_NO_NOT_UNIQUE);
+
+
+				PatientEntity pat = PatientDTO.preparePatientEntity(patientDTO);
+				pat.setDoctor(doc.get());
+				patientRepository.save(pat);
+
+				return patientDTO;
+				}
+
+	       
+			//DTO
+			@NotNull("{patient.name.notpresent}")
+			@Pattern(regexp= "[A-Z][a-z]+" , message = "{patient.name.invalid}")
+			patientName
+
+			@NotNull("{patient.phoneNumber.notpresent}")
+			@Pattern(regexp= "[0-9]{10}" , message = "{patient.phoneNo.invalid}")
+			phoneNumber
+
+			@NotNull("{patient.doctor.notpresent}")
+			@Valid
+			doctorDTO 
+
+			@NotNull("{doctor.doctorType.notpresent}")
+			@Pattern(regexp= "(skin|eye|dental)" , message = "{patient.phoneNo.invalid}")
+			doctorType
+
+			@NotNull("{doctor.doctorType.notpresent}")
+			@Pattern(regexp= "[A-Z][a-z]+" , message = "{doctor.name.invalid}")
+			doctorName
+
+			//Controller Advice
+			
+			@RestControllerAdvice
+			
+			public class---------
+
+			@ExceptionHandler(Exception.class)
+
+			logger.error(ex.getMessage(),ex)
+			ErrorInfo err =new ErrorInfo();
+			err.setErrorCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+			err.setErrorMsg(environment.getProperty(InfyBookMyDoctorConstants.INFYBOOKMYDOCTOR_EXCEPTIONMSG_GENERAL.toString()))
+			return new ResponseEntity<>(err,HttpStatus.INTERNAL_SERVER_ERROR);
+			@ExceptionHandler(InfyBookMyDoctorException.class)
+
+			logger.error(ex.getMessage(),ex)
+			ErrorInfo err =new ErrorInfo();
+			err.setErrorCode(HttpStatus.BAD_REQUEST.value());
+			err.setErrorMsg(environment.getProperty(ex.getMessage()))
+			return new ResponseEntity<>(err,HttpStatus.BAD_REQUEST);
+
+
+			@ExceptionHandler({MethodArgumentNotValid.class,ConstraintViolationException.class})
+
+           // Controller class			
+			@RestController
+			@RequestMapping
+			@validated
+
+			public class ________{
+
+			@Autowired
+			private BookMyDoctorService bookMyDoctorService;
+
+			@GetMapping(value= "/patients/{patientName}")
+			public ResponseEntity<List<PatientDTO>>getDetailsByPatientName(@PathVariable @Pattern(regexp = "[a-z]+" , message= "{patient.name.invalid}") @Valid String patientName) throws InfyBookMyDoctorException{
+			 
+			List<PatientDTO> pat= bookMyDoctorService.getDetailsByPatientName(patientName);
+			return new ResponseEntity<>(pat , HttpStatus.OK);
+			}
+
+			@PostMapping(value= "/register")
+			public ResponseEntity<PatientDTO>registerPatient(@Valid @RequestBody PatientDTO patientDTO) throws InfyBookMyDoctorException{
+
+			PatientDTO patDTO=bookMyDoctorService.registerPatient(patientDTO);
+			return new ResponseEntity<>(patDTO , HttpStatus.CREATED);
+
+			}
+
+			@PutMapping(value="patients/{appointmentId}")
+			public ResponseEntity<PatientDTO>updatePatient(@PathVariable Integer appointmentId,
+								       @RequestParam("phoneNo") 
+								       @Pattern(regexp= "[0-9]{10}" , message ="{patient.phoneNo.invalid}") Long phoneNo) throws InfyBookMyDoctorException{
+
+			PatientDTO patDTO= bookMyDoctorService.updatePatient(appointmentId,phoneNo);
+			return new ResponseEntity<>(patDTO);
+
+			}
+
+			@DeleteMapping(value="patients/{phoneNo}")
+			public String deletePatient(@PathVariable @Pattern(regexp= "[0-9]{10}" , message = "{patient.phoneNo.invalid}") Long phoneNo) throws InfyBookMyDoctorException{
+
+			String del= bookMyDoctorService.deletePatient(phoneNo);
+			return del;
+
+			}
+//==========================================================================================================
+RIDE
+//application properties
+    server.port=2222
+	server.servlet.context-path=/InfyRide	
+	//serviceimpl
+	 public String cancelRide(int rideId, CancelBookingDTO cancelBookingDTO) throws InfyRideException {
+
+	Optional<RideEntity> ridentity=rideRepository.findById(rideId);
+    if(!ridentity.isPresent()) {
+        throw new InfyRideException(InfyRideConstants.INFYRIDE_RIDEID_NOT_FOUND.toString());  
+    }
+    RideEntity rideEntity=ridentity.get();
+    if(rideEntity.getStatus().equals("COMPLETED")) {
+        throw new InfyRideException(InfyRideConstants.INFYRIDE_CANCEL_RIDE_ALREADY_COMPLETED.toString());
+       }
+   if(rideEntity.getStatus().equals(CANCELLED)) {
+        throw new InfyRideException(InfyRideConstants.INFYRIDE_CANCEL_RIDE_ALREADY_CANCELLED.toString());
+        }
+rideEntity.setStatus(CANCELLED);    
+rideEntity.setReasonForCancellation(cancelBookingDTO.getReasonForCancellation());
+rideRepository.save(rideEntity);
+return environment.getProperty(InfyRideConstants.INFYRIDE_CANCEL_SUCCESS.toString());
+}
+	 
+              //RideDTO
+	 @NotBlank(message="{ride.pickuplocation.notpresent}")
+     @Pattern(regexp="([a-zA-Z0-9,-/\\s])+", message= "{ride.pickuplocation.invalid}")
+      private String pickupLocation;
+      
+      @NotBlank(message="{ride.droplocation.notpresent}")
+      @Pattern(regexp="([a-zA-Z0-9,-/\\s])+" , message= "{ride.droplocation.invalid}")
+      private String dropLocation;
+
+      @NotNull(message="{ride.datetime.notpresent}")
+      @Future(message="{ride.datetime.invalid}")
+      
+      public String getPickupLocation() {
+  		return pickupLocation;
+  	}
+  	public void setPickupLocation(String pickupLocation) {
+  		this.pickupLocation = pickupLocation;
+  	}
+  private LocalDateTime rideDateTime;
+
+	 //cancelDTO
+      @NotNull(message="{ride.reasonforcancellation.notpresent}")
+      @Pattern(regexp = "(?=.*[a-zA-Z0-9].*)[a-zA-Z0-9.,! ]*",message="{ride.reasonforcancellation.invalid}")
+       private String reasonForCancellation;
+      
+      public String getReasonForCancellation() {
+  		return reasonForCancellation;
+  	}
+  	public void setReasonForCancellation(String reasonForCancellation) {
+  		this.reasonForCancellation = reasonForCancellation;
+
+      
+    //ExceptionControllerAdvice--
+	   @RestControllerAdvice
+	   //public class ExceptionControllerAdvice
+	   @ExceptionHandler(Exception.class)
+	   public ResponseEntity<ErrorInfo> generalExceptionHandler(Exception ex){
+		   logger.error(ex.getMessage(),ex);
+		   ErrorInfo errorInfo = new ErrorInfo();
+		   errorInfo.setErrorCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+		   errorInfo.setErrorMsg(environment.getProperty(InfyRideConstants.INFYRIDE_EXCEPTIONMSG_GENERAL.toString()));
+		   return new ResponseEntity<>(errorInfo,HttpStatus.INTERNAL_SERVER_ERROR);
+	   }
+	   @ExceptionHandler(InfyRideException.class)
+	   public ResponseEntity<ErrorInfo>infyRideExceptionHandler(InfyRideException ex){
+		   logger.error(ex.getMessage(),ex);
+		   ErrorInfo errorInfo = new ErrorInfo();
+		   errorInfo.setErrorCode(HttpStatus.BAD_REQUEST.value());
+		   errorInfo.setErrorMsg(environment.getProperty(ex.getMessage()));
+		   return new ResponseEntity<>(errorInfo,HttpStatus.BAD_REQUEST);
+	   }
+	   @ExceptionHandler({MethodArgumentNotValidException.class,ConstraintViolationException.class})
+	    public ResponseEntity<ErrorInfo>exceptionHandler(Exception ex){}
+	 //controller
+       
+       @RestController
+     @Validated
+     public class InfyRideController {
+
+       @Autowired
+       private InfyRideService infyRideService;
+       
+      
+       @GetMapping(value="/ride/{pickupLocation}/{dropLocation}")
+       public String getEstimatedFare(@PathVariable String pickupLocation,@PathVariable String dropLocation) throws InfyRideException {
+           String successMessage=infyRideService.getEstimatedFare(pickupLocation.trim(),dropLocation.trim());
+           return successMessage;  
+       }
+       
+       
+       @PostMapping(value="/ride")
+       public String bookRide(@Valid @RequestBody RideDTO rideDTO) throws InfyRideException {
+           String successMessage=infyRideService.bookRide(rideDTO);
+           return successMessage;
+       }
+
+       @PutMapping(value="/ride/{rideId}/{newPickupLocation}")
+       public String updateRide(@PathVariable @Min(value=1,message="{ride.rideid.invalid}")
+       int rideId,@PathVariable String newPickupLocation) throws InfyRideException {
+           String successMessage=infyRideService.updateRide(rideId,newPickupLocation);
+           return successMessage;
+       }
+      
+       @DeleteMapping(value="/ride/{rideId}")
+       public String cancelRide(@PathVariable("rideId") @Min(value=1,message="{ride.rideid.invalid}")
+       int rideId, @Valid @RequestBody CancelBookingDTO cancelBookingDTO ) throws InfyRideException{
+           String successMessage=infyRideService.cancelRide(rideId,cancelBookingDTO);
+           return successMessage;
+           
+       }
+       
+
+	 //=======================================================================================================
