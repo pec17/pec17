@@ -6,7 +6,7 @@
 			//SERVICE IMPL
 
 					public PatientDTO registerPatient(PatientDTO patientDTO) throws InfyBookMyDoctorException{
-				Optional<DoctorEntity> doc = doctorRepository.findByDoctorNameAndDoctorType(patientDTO.getDoctorDTO().getDoctorName(),patientDTO.getDoctorDTO().getDoctorName());
+				Optional<DoctorEntity> doc = doctorRepository.findByDoctorNameAndDoctorType(patientDTO.getDoctorDTO().getDoctorName(),patientDTO.getDoctorDTO().getDoctorType());
 				if(doc.isEmpty())
 					throw new InfyBookMyDoctorException(InfyBookMyDoctorConstants.DOCTOR_NOT_FOUND.toString());
 
